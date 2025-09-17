@@ -1,0 +1,69 @@
+services:
+  mysql:
+    image: mysql:9.0
+    container_name: mysql
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - mysql:/var/lib/mysql
+    networks:
+      - uptimekuma
+    restart: unless-stopped
+
+  uptimekuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptimekuma
+    volumes:
+      - uptimekuma:/app/data
+    expose:
+      - "3001"
+    restart: unless-stopped
+    networks:
+      - uptimekuma
+    environment:
+      - UPTIME_KUMA_DB_TYPE=mariadb
+      - UPTIME_KUMA_DB_HOSTNAME=mysql
+      - UPTIME_KUMA_DB_PORT=3306
+      - UPTIME_KUMA_DB_NAME=${MYSQL_DATABASE}
+      - UPTIME_KUMA_DB_USERNAME=${MYSQL_USER}
+      - UPTIME_KUMA_DB_PASSWORD=${MYSQL_PASSWORD}
+    depends_on:
+      - mysql
+    
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy:/data
+    depends_on:
+      - uptimekuma
+    networks:
+      - uptimekuma
+    restart: unless-stopped
+
+
+networks:
+  uptimekuma:
+    name: uptimekuma
+    driver: bridge
+
+    
+volumes:
+  uptimekuma:
+    name: uptimekuma
+    driver: local
+  
+  mysql:
+    name: mysql
+    driver: local
+
+  caddy:
+    name: caddy
+    driver: local
